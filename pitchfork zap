@@ -1,0 +1,115 @@
+// Acceso a las clases de Java usando `Java.type`
+var HttpURLConnection = Java.type('java.net.HttpURLConnection');
+var URL = Java.type('java.net.URL');
+var BufferedReader = Java.type('java.io.BufferedReader');
+var InputStreamReader = Java.type('java.io.InputStreamReader');
+var OutputStreamWriter = Java.type('java.io.OutputStreamWriter');
+var PrintWriter = Java.type('java.io.PrintWriter');
+
+var BaseURL = "https://www.facebook.com/login/";
+var bodyParamValues = ["tron@gmail.com", "valor2@gmail.com", "valor3@gmail.com"];
+var ipValues = ["192.168.1.1", "10.0.0.1", "172.16.0.1"];
+
+// Variables para acumular el resumen
+var statusCodes = { "200": 0 };
+var errorCodes = {};
+
+function sendPostRequest(url, body, headers) {
+    var connection = null;
+    var writer = null;
+    var reader = null;
+    try {
+        var urlObj = new URL(url);
+        connection = urlObj.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+
+        // Establecer encabezados
+        for (var header in headers) {
+            if (headers.hasOwnProperty(header)) {
+                connection.setRequestProperty(header, headers[header]);
+            }
+        }
+        
+        // Enviar el cuerpo de la solicitud
+        writer = new PrintWriter(new OutputStreamWriter(connection.getOutputStream()));
+        writer.write(body);
+        writer.flush();
+
+        // Obtener el código de respuesta y el tamaño total del cuerpo
+        var responseCode = connection.getResponseCode();
+        var inputStream = responseCode >= 200 && responseCode < 300 
+            ? connection.getInputStream() 
+            : connection.getErrorStream();
+        
+        var responseSize = 0;
+        var buffer = new java.lang.StringBuilder();
+        reader = new BufferedReader(new InputStreamReader(inputStream));
+        var line;
+        while ((line = reader.readLine()) !== null) {
+            responseSize += line.length(); // Agregar el tamaño de la línea al tamaño total
+            buffer.append(line).append("\n");
+        }
+
+        // Incrementar conteo de códigos de estado
+        if (responseCode === 200) {
+            statusCodes["200"] = (statusCodes["200"] || 0) + 1;
+        } else {
+            errorCodes[responseCode] = (errorCodes[responseCode] || 0) + 1;
+        }
+
+        // Imprimir el código de estado y el tamaño total del cuerpo
+        print("Status Code: " + responseCode + " | Response Size: " + responseSize + " bytes");
+
+    } catch (e) {
+        print("Error: " + e.toString());
+    } finally {
+        if (writer) {
+            try {
+                writer.close();
+            } catch (e) {
+                print("Error cerrando writer: " + e.toString());
+            }
+        }
+        if (reader) {
+            try {
+                reader.close();
+            } catch (e) {
+                print("Error cerrando reader: " + e.toString());
+            }
+        }
+        if (connection) {
+            try {
+                connection.disconnect();
+            } catch (e) {
+                print("Error desconectando: " + e.toString());
+            }
+        }
+    }
+}
+
+// Ejecutar las solicitudes
+for (var i = 0; i < bodyParamValues.length; i++) {    
+        var bodyParamValue = bodyParamValues[i];
+        var ipValue = ipValues[i];
+
+        var body = JSON.stringify({"param": bodyParamValue});
+
+        var headers = {
+            "X-Forwarded-For": ipValue,
+            "Content-Type": "application/json"
+        };        
+        sendPostRequest(BaseURL, body, headers);
+    
+}
+
+// Imprimir resumen de los códigos de estado
+print("Resumen de Códigos de Estado:");
+print("Código 200 (Éxito): " + (statusCodes["200"] || 0));
+
+print("Otros Códigos de Error:");
+for (var code in errorCodes) {
+    if (errorCodes.hasOwnProperty(code)) {
+        print("Código " + code + ": " + errorCodes[code]);
+    }
+}
