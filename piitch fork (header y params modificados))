@@ -1,0 +1,167 @@
+var HttpURLConnection = Java.type('java.net.HttpURLConnection');
+var URL = Java.type('java.net.URL');
+var BufferedReader = Java.type('java.io.BufferedReader');
+var InputStreamReader = Java.type('java.io.InputStreamReader');
+var OutputStreamWriter = Java.type('java.io.OutputStreamWriter');
+var PrintWriter = Java.type('java.io.PrintWriter');
+var Proxy = Java.type('java.net.Proxy');
+var InetSocketAddress = Java.type('java.net.InetSocketAddress');
+
+// Constants
+var BaseURL = "https://www.facebook.com/login/device-based/regular/login/?login_attempt=1&lwv=100";
+var bodyParamValues = ["tron@gmail.com", "valor2@gmail.com", "valor3@gmail.com"];
+var ipValues = ["192.168.1.1", "10.0.0.1", "172.16.0.1"];
+
+// Variables for accumulating the summary
+var statusCodes = { "200": 0 };
+var errorCodes = {};
+
+// Function to build query string
+function buildQueryString(params) {
+    return Object.keys(params).map(function(key) {
+        return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    }).join('&');
+}
+
+// Function to send POST request
+function sendPostRequest(url, body, headers) {
+    var connection = null;
+    var writer = null;
+    var reader = null;
+    try {
+        var urlObj = new URL(url);
+        var proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8090));
+        connection = urlObj.openConnection(proxy);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+
+        // Set request headers
+        for (var header in headers) {
+            if (headers.hasOwnProperty(header)) {
+                connection.setRequestProperty(header, headers[header].toString()); // Ensure header values are strings
+            }
+        }
+
+        // Send request body
+        writer = new PrintWriter(new OutputStreamWriter(connection.getOutputStream()));
+        writer.write(body);
+        writer.flush();
+
+        // Get response code and input stream
+        var responseCode = connection.getResponseCode();
+        var inputStream = (responseCode >= 200 && responseCode < 300)
+            ? connection.getInputStream()
+            : connection.getErrorStream();
+
+        var responseSize = 0;
+        var buffer = new java.lang.StringBuilder();
+        reader = new BufferedReader(new InputStreamReader(inputStream));
+        var line;
+        while ((line = reader.readLine()) !== null) {
+            responseSize += line.length(); // Add line length to total size
+            buffer.append(line).append("\n");
+        }
+
+        // Update status codes
+        if (responseCode === 200) {
+            statusCodes["200"] = (statusCodes["200"] || 0) + 1;
+        } else {
+            errorCodes[responseCode] = (errorCodes[responseCode] || 0) + 1;
+        }
+
+        // Print status and response size
+        print("Status Code: " + responseCode + " | Response Size: " + responseSize + " bytes");
+
+    } catch (e) {
+        print("Error: " + e.toString());
+    } finally {
+        if (writer) {
+            try {
+                writer.close();
+            } catch (e) {
+                print("Error closing writer: " + e.toString());
+            }
+        }
+        if (reader) {
+            try {
+                reader.close();
+            } catch (e) {
+                print("Error closing reader: " + e.toString());
+            }
+        }
+        if (connection) {
+            try {
+                connection.disconnect();
+            } catch (e) {
+                print("Error disconnecting: " + e.toString());
+            }
+        }
+    }
+}
+
+// Execute requests
+for (var i = 0; i < bodyParamValues.length; i++) {
+    var bodyParamValue = bodyParamValues[i];
+    var ipValue = ipValues[i];
+
+    // Construct query string
+    var params = {
+        "jazoest": "2844",
+        "lsd": "AVr33SvU8BE",
+        "display": "",
+        "isprivate": "",
+        "return_session": "",
+        "skip_api_login": "",
+        "signed_next": "",
+        "trynum": "1",
+        "timezone": "300",
+        "lgndim": "eyJ3IjoxNTM2LCJoIjo4NjQsImF3IjoxNTM2LCJhaCI6ODY0LCJjIjoyNH0%3D",
+        "lgnrnd": "093326_hbZc",
+        "lgnjs": "1723048407",
+        "email": bodyParamValue,
+        "prefill_contact_point": "",
+        "prefill_source": "",
+        "prefill_type": "",
+        "first_prefill_source": "",
+        "first_prefill_type": "",
+        "had_cp_prefilled": "false",
+        "had_password_prefilled": "false",
+        "ab_test_data": "AZM%2F%2FMlAAAZAAAAAAAAAMAAAAAAAAMAAAAAAAAAAAjj%2FOcAAAALAAE",
+        "encpass": "%23PWD_BROWSER%3A5%3A1723048423%3AAcxQAKTVujo6n%2F6%2BzVQR5rkhV5bi8Gh5iT0Y1do1W89K8gUlGEoDqxkIAsQZK6Rsw2iq9ihW4t0ni06N7kPWf6Wyi08R5TMwbmpsKMEhEUB6NoHf5tDjqB8hG240ydzjp6X4lkUV4UglZw%3D%3D"
+    };
+    
+    var body = buildQueryString(params);
+    var headers = {
+        "Host": "www.facebook.com",
+        "Connection": "keep-alive",
+        "Content-Length": body.length.toString(), // Ensure Content-Length is a string
+        "Cache-Control": "max-age=0",
+        "sec-ch-ua": "\"Not)A;Brand\";v=\"99\", \"Google Chrome\";v=\"127\", \"Chromium\";v=\"127\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "Upgrade-Insecure-Requests": "1",
+        "Origin": "https://www.facebook.com",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
+        "Referer": "https://www.facebook.com/login/",
+        "Accept-Language": "es-ES,es;q=0.9",
+        "Cookie": "sb=y6GzZpP1VSthIGqjSyMykfRU; wd=1536x742; dpr=1.25; datr=y6GzZklaq6gW6FvnaVzM7jM2; fr=0LG4Wpnn8aM7XChxQ..Bms6HL..AAA.0.0.Bms6HW.AWU3aqTZY3g; ps_l=0; ps_n=0"
+    };
+    sendPostRequest(BaseURL, body, headers);
+}
+
+// Print summary of status codes
+print("Status Code Summary:");
+print("200 (Success): " + (statusCodes["200"] || 0));
+
+print("Other Error Codes:");
+for (var code in errorCodes) {
+    if (errorCodes.hasOwnProperty(code)) {
+        print("Code " + code + ": " + errorCodes[code]);
+    }
+}
